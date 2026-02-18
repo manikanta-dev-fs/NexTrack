@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # API Service
+  api:
+    build: .
+    container_name: nextrack-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/nextrack.db
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - nextrack-network
+
+  # Optional: Redis for caching (Phase 4)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: nextrack-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   restart: unless-stopped
+  #   networks:
+  #     - nextrack-network
+
+  # Optional: Prometheus for metrics (Phase 5)
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: nextrack-prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #     - prometheus-data:/prometheus
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #   restart: unless-stopped
+  #   networks:
+  #     - nextrack-network
+
+networks:
+  nextrack-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  prometheus-data:
