@@ -245,5 +245,5 @@ The app will be available at **http://localhost:8000** with PostgreSQL.
 
 ## 🌍 Live Demo
 
-- **Base URL:** Coming Soon
-- **Swagger Docs:** `/docs`
+Base URL: https://nextrack-hpg3.onrender.com  
+Swagger Docs: https://nextrack-hpg3.onrender.com/docs
