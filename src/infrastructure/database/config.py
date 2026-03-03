@@ -1,8 +1,9 @@
 """
-Database Configuration - SQLite for Local Development (No Docker Required)
+Database Configuration - Dual Support (SQLite + PostgreSQL)
 
-This version uses SQLite instead of PostgreSQL for easy local development.
-No additional setup needed!
+Automatically detects database type from DATABASE_URL:
+- SQLite (default): No setup needed, great for local development
+- PostgreSQL: Production-grade, used in Docker deployment
 """
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -11,22 +12,39 @@ from typing import AsyncGenerator
 import os
 from pathlib import Path
 
-# Create data directory if it doesn't exist
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
+# Database URL from environment (supports both SQLite and PostgreSQL)
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-# SQLite database URL (no PostgreSQL needed!)
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    f"sqlite+aiosqlite:///{DATA_DIR}/nextrack.db"
-)
-
-# Create async engine
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=True,  # Set to False in production
-    future=True,
-)
+# Auto-detect database type and configure accordingly
+if DATABASE_URL.startswith("postgresql"):
+    # PostgreSQL: convert to async driver if needed
+    if "asyncpg" not in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+        DATABASE_URL = DATABASE_URL.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
+    
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        future=True,
+        pool_size=10,
+        max_overflow=20,
+        pool_pre_ping=True,
+    )
+else:
+    # SQLite (default for local development)
+    DATA_DIR = Path("data")
+    DATA_DIR.mkdir(exist_ok=True)
+    
+    if not DATABASE_URL:
+        DATABASE_URL = f"sqlite+aiosqlite:///{DATA_DIR}/nextrack.db"
+    elif DATABASE_URL.startswith("sqlite:///"):
+        DATABASE_URL = DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
+    
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        future=True,
+    )
 
 # Async session factory
 AsyncSessionLocal = async_sessionmaker(
@@ -57,7 +75,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db():
-    """Initialize database tables (creates SQLite file automatically)."""
+    """Initialize database tables."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

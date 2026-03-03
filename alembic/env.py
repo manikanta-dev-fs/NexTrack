@@ -1,7 +1,8 @@
 """
-Alembic Environment Configuration - SQLite with Sync Driver
+Alembic Environment Configuration - Supports SQLite & PostgreSQL
 
-Uses synchronous SQLite for migrations (Alembic requirement).
+Automatically detects database type from DATABASE_URL environment variable.
+Uses synchronous drivers for migrations (Alembic requirement).
 """
 
 from logging.config import fileConfig
@@ -14,16 +15,34 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from src.infrastructure.database.models import Base, TransactionModel, PaymentDetailModel
+from src.infrastructure.database.user_model import UserModel  # noqa: F401
 from pathlib import Path
 
 # Alembic Config object
 config = context.config
 
-# Set database URL (sync SQLite for Alembic)
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
-DATABASE_URL = f"sqlite:///{DATA_DIR}/nextrack.db"
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# Determine database URL (supports both SQLite and PostgreSQL)
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+if DATABASE_URL.startswith("postgresql"):
+    # PostgreSQL: ensure sync driver for Alembic
+    sync_url = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+    sync_url = sync_url.replace("postgresql+psycopg2://", "postgresql://")
+    # Use psycopg2 sync driver
+    if "psycopg2" not in sync_url and "+asyncpg" not in sync_url:
+        sync_url = sync_url.replace("postgresql://", "postgresql+psycopg2://")
+    else:
+        sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    config.set_main_option("sqlalchemy.url", sync_url)
+else:
+    # SQLite (default)
+    DATA_DIR = Path("data")
+    DATA_DIR.mkdir(exist_ok=True)
+    if DATABASE_URL and DATABASE_URL.startswith("sqlite"):
+        sync_url = DATABASE_URL.replace("sqlite+aiosqlite:///", "sqlite:///")
+        config.set_main_option("sqlalchemy.url", sync_url)
+    else:
+        config.set_main_option("sqlalchemy.url", f"sqlite:///{DATA_DIR}/nextrack.db")
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:

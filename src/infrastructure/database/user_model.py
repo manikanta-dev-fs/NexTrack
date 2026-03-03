@@ -32,6 +32,7 @@ class UserModel(Base):
     full_name = Column(String(255))
     is_active = Column(Boolean, default=True, nullable=False)
     is_superuser = Column(Boolean, default=False, nullable=False)
+    role = Column(String(20), default="user", nullable=False)  # "admin" or "user"
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

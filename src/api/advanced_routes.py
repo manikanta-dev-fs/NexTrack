@@ -15,7 +15,7 @@ import io
 from src.infrastructure.database import get_db
 from src.infrastructure.database.models import TransactionModel
 from src.infrastructure.database.user_model import UserModel
-from src.api.auth_routes import get_current_user
+from src.api.auth_routes import get_current_user, require_admin
 from src.api.schemas import TransactionCreate, TransactionResponse
 from src.application.services import TransactionService
 
@@ -141,13 +141,13 @@ async def bulk_create_transactions(
 @router.delete("/bulk/delete")
 async def bulk_delete_transactions(
     transaction_ids: List[str],
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Delete multiple transactions by IDs.
+    Delete multiple transactions by IDs (admin only).
     
-    Only deletes transactions owned by the authenticated user.
+    Only admin users can perform bulk deletion.
     """
     service = TransactionService(db, current_user)
     deleted_count = 0

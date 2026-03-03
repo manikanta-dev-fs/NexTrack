@@ -30,6 +30,7 @@ class UserResponse(UserBase):
     id: str
     is_active: bool
     is_superuser: bool
+    role: str = "user"
     created_at: datetime
     
     class Config:

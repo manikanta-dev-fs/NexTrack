@@ -1,7 +1,7 @@
 """
 Authentication Endpoints
 
-User registration, login, and profile management.
+User registration, login, profile management, and role-based access control.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -56,6 +56,22 @@ async def get_current_user(
         raise HTTPException(status_code=400, detail="Inactive user")
     
     return user
+
+
+async def require_admin(
+    current_user: UserModel = Depends(get_current_user),
+) -> UserModel:
+    """
+    Dependency that ensures the current user has admin role.
+    
+    Use as: current_user: UserModel = Depends(require_admin)
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -124,8 +140,10 @@ async def login(
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     
-    # Create access token
-    access_token = create_access_token(data={"sub": user.id, "username": user.username})
+    # Create access token with role in payload
+    access_token = create_access_token(
+        data={"sub": user.id, "username": user.username, "role": user.role}
+    )
     
     return Token(access_token=access_token)
 

@@ -1,6 +1,10 @@
 # NexTrack 📊
 
-A personal expense tracking REST API built with **FastAPI** and **SQLite**, developed as a learning project to practice backend development, clean architecture, and API design.
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
+![Status](https://img.shields.io/badge/status-production--ready-brightgreen)
+![API](https://img.shields.io/badge/docs-Swagger-green)
+
+Production-style REST API built with **FastAPI**, featuring JWT authentication, RBAC, monitoring, and structured error handling.
 
 ---
 
@@ -9,7 +13,7 @@ A personal expense tracking REST API built with **FastAPI** and **SQLite**, deve
 | Layer | Technology |
 |---|---|
 | Web Framework | FastAPI |
-| Database | SQLite (via aiosqlite) |
+| Database | PostgreSQL (prod) / SQLite (dev) |
 | ORM | SQLAlchemy (async) |
 | Migrations | Alembic |
 | Auth | JWT (python-jose + passlib) |
@@ -30,6 +34,17 @@ A personal expense tracking REST API built with **FastAPI** and **SQLite**, deve
 - **Export** — Download transactions as CSV
 - **Health Check** — `/health` endpoint with DB connectivity status
 - **Auto Docs** — Swagger UI at `/docs`, ReDoc at `/redoc`
+
+---
+
+## 🔐 Production Enhancements (v2.1.0)
+
+- **Role-Based Access Control** — Admin/User roles with `require_admin` middleware
+- **Structured JSON Error Responses** — All errors return `{ "success": false, "message": "..." }`
+- **Environment-Based Configuration** — `SECRET_KEY` loaded from environment variables
+- **Request Tracing** — UUID-based `X-Request-ID` header on every response
+- **API Performance Metrics** — Live dashboard at `/admin/metrics` (admin only)
+- **Alembic Migration Versioning** — Schema changes tracked via numbered migrations
 
 ---
 
@@ -144,6 +159,12 @@ Open **http://localhost:8000/docs** to explore and test the API interactively.
 | GET | `/api/v1/export/csv` | Export transactions as CSV |
 | POST | `/api/v1/bulk` | Bulk create transactions |
 
+### Admin (🔒 Admin Only)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/admin/users` | List all registered users |
+| GET | `/admin/metrics` | API performance metrics dashboard |
+
 ### System
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -166,6 +187,12 @@ python -m pytest tests/ --cov=src --cov-report=term-missing
 
 ---
 
+## 🏗️ Architecture Diagram
+
+![Architecture Diagram](./docs/architecture.png)
+
+---
+
 ## 🏛️ Architecture
 
 The project follows a **layered architecture** pattern:
@@ -177,7 +204,7 @@ API Layer (FastAPI routes + Pydantic validation)
     ↓
 Application Layer (TransactionService — business logic)
     ↓
-Infrastructure Layer (SQLAlchemy ORM + SQLite)
+Infrastructure Layer (SQLAlchemy ORM + PostgreSQL / SQLite)
 ```
 
 Key design patterns used:
@@ -188,13 +215,20 @@ Key design patterns used:
 
 ---
 
-## 🐳 Docker (Optional)
+## 🐳 Docker (PostgreSQL)
 
 ```bash
+# Start PostgreSQL + API
 docker-compose up -d
+
+# View logs
+docker-compose logs -f api
+
+# Stop services
+docker-compose down
 ```
 
-The app will be available at **http://localhost:8000**.
+The app will be available at **http://localhost:8000** with PostgreSQL.
 
 ---
 
@@ -209,6 +243,7 @@ The app will be available at **http://localhost:8000**.
 
 ---
 
-## 📄 License
+## 🌍 Live Demo
 
-MIT — free to use and reference for your own learning.
+- **Base URL:** Coming Soon
+- **Swagger Docs:** `/docs`

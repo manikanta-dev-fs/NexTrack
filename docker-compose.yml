@@ -1,6 +1,28 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: nextrack-postgres
+    environment:
+      POSTGRES_DB: nextrack_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nextrack_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - nextrack-network
+
   # API Service
   api:
     build: .
@@ -8,18 +30,20 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./data/nextrack.db
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-nextrack_secret}@postgres:5432/nextrack_db
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       - LOG_LEVEL=INFO
     volumes:
-      - ./data:/app/data
       - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 10s
+      start_period: 15s
     restart: unless-stopped
     networks:
       - nextrack-network
@@ -36,25 +60,10 @@ services:
   #   networks:
   #     - nextrack-network
 
-  # Optional: Prometheus for metrics (Phase 5)
-  # prometheus:
-  #   image: prom/prometheus:latest
-  #   container_name: nextrack-prometheus
-  #   ports:
-  #     - "9090:9090"
-  #   volumes:
-  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
-  #     - prometheus-data:/prometheus
-  #   command:
-  #     - '--config.file=/etc/prometheus/prometheus.yml'
-  #   restart: unless-stopped
-  #   networks:
-  #     - nextrack-network
-
 networks:
   nextrack-network:
     driver: bridge
 
 volumes:
+  postgres-data:
   redis-data:
-  prometheus-data:

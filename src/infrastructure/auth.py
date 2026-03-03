@@ -2,17 +2,19 @@
 JWT Authentication Utilities
 
 Token creation, validation, and user authentication.
+Configuration loaded from environment variables.
 """
 
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-# Configuration
-SECRET_KEY = "your-secret-key-change-in-production-use-env-variable"  # TODO: Move to environment
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Configuration from environment
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-fallback-key-change-in-production")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

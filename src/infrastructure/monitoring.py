@@ -1,12 +1,13 @@
 """
 Performance Enhancements - Logging and Monitoring
 
-Phase 4 & 5: Structured logging, performance monitoring, and error tracking.
+Structured logging, performance monitoring, metrics collection, and error tracking.
 """
 
 import logging
 import json
 import time
+import uuid
 from datetime import datetime
 from typing import Callable
 from fastapi import Request, Response
@@ -58,15 +59,20 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
     - Request/response times
     - Status codes
     - Slow queries (>1s)
+    - Request IDs for tracing
+    
+    Wires into MetricsCollector for aggregate stats.
     """
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start_time = time.time()
+        request_id = str(uuid.uuid4())
         
         # Log incoming request
         logger.info(
             "Incoming request",
             extra={
+                "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
                 "client": request.client.host if request.client else None
@@ -78,12 +84,16 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             process_time = time.time() - start_time
             
+            # Record metrics
+            metrics.record_request(request.url.path, process_time, response.status_code)
+            
             # Log response
             log_level = logging.INFO if response.status_code < 400 else logging.WARNING
             logger.log(
                 log_level,
                 "Request completed",
                 extra={
+                    "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
                     "status_code": response.status_code,
@@ -96,22 +106,26 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
                 logger.warning(
                     "Slow request detected",
                     extra={
+                        "request_id": request_id,
                         "method": request.method,
                         "path": request.url.path,
                         "process_time": f"{process_time:.3f}s"
                     }
                 )
             
-            # Add performance header
+            # Add tracing headers
             response.headers["X-Process-Time"] = f"{process_time:.3f}"
+            response.headers["X-Request-ID"] = request_id
             
             return response
             
         except Exception as e:
             process_time = time.time() - start_time
+            metrics.record_request(request.url.path, process_time, 500)
             logger.error(
                 "Request failed",
                 extra={
+                    "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
                     "error": str(e),
@@ -193,7 +207,9 @@ class MetricsCollector:
         return {
             "total_requests": self.request_count,
             "total_errors": self.error_count,
-            "error_rate": self.error_count / self.request_count if self.request_count > 0 else 0,
+            "error_rate": round(
+                self.error_count / self.request_count if self.request_count > 0 else 0, 4
+            ),
             "avg_response_time": f"{avg_response_time:.3f}s",
             "endpoints": self.endpoint_metrics
         }
